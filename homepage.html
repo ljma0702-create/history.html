@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>역사 강아지 산책: 실시간 랭킹</title>
+    <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap" rel="stylesheet">
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push, set, onValue, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDUd8VyfvQvQ77wF9qOrKJ54Kol2Hd4O6c",
+            authDomain: "history-project-b5cda.firebaseapp.com",
+            databaseURL: "https://history-project-b5cda-default-rtdb.firebaseio.com",
+            projectId: "history-project-b5cda",
+            storageBucket: "history-project-b5cda.firebasestorage.app",
+            messagingSenderId: "261328110596",
+            appId: "1:261328110596:web:cd0951f2d93172cd29e151",
+            measurementId: "G-SCN5XQ23KC"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // 점수 저장 함수 (닉네임 포함)
+        window.saveRankToFirebase = function(name, score) {
+            const rankRef = ref(db, 'rankings');
+            const newRankRef = push(rankRef);
+            set(newRankRef, {
+                name: name,
+                score: score,
+                timestamp: Date.now()
+            }).then(() => {
+                alert(`${name}님, 산책 완료! 기록이 저장되었습니다.`);
+                location.reload();
+            });
+        };
+
+        // 실시간 랭킹 불러오기
+        window.loadRankings = function() {
+            const rankRef = ref(db, 'rankings');
+            const topRankQuery = query(rankRef, orderByChild('score'), limitToLast(5));
+
+            onValue(topRankQuery, (snapshot) => {
+                const data = snapshot.val();
+                const container = document.getElementById('rank-list-content');
+                if (!data) {
+                    container.innerHTML = "아직 기록이 없어요!";
+                    return;
+                }
+                const sortedRanks = Object.values(data).sort((a, b) => b.score - a.score);
+                container.innerHTML = sortedRanks.map((r, i) =>
+                    `<div><span style="color:#8d6e63; font-weight:bold;">${i+1}위</span> ${r.name} : ${r.score}m</div>`
+                ).join('');
+            });
+        };
+    </script>
+
+    <style>
+        :root {
+            --deep-brown: #5d4037; --main-brown: #8d6e63; --light-brown: #d7ccc8;
+            --cream: #fafafa; --sky-blue: #e3f2fd; --grass-green: #aed581;
+        }
+
+        body {
+            background-color: var(--light-brown); font-family: 'Gaegu', cursive;
+            margin: 0; display: flex; justify-content: center; align-items: center;
+            height: 100vh; overflow: hidden; color: var(--deep-brown);
+        }
+
+        /* 시작, 랭킹 화면 */
+        #screen-start, #screen-rank {
+            position: absolute; width: 800px; height: 600px;
+            background-color: var(--cream); border-radius: 40px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 500; border: 8px solid var(--main-brown); box-shadow: 0 15px 0px var(--main-brown);
+        }
+
+        #screen-rank { display: none; z-index: 600; }
+
+        /* 입력창 스타일 */
+        .nickname-input {
+            width: 300px; height: 50px; border-radius: 20px; border: 3px solid var(--main-brown);
+            font-family: 'Gaegu'; font-size: 24px; text-align: center; margin-bottom: 20px; outline: none;
+        }
+
+        button {
+            padding: 12px 35px; font-size: 26px; font-family: 'Gaegu';
+            background-color: var(--main-brown); color: white; border: none;
+            border-radius: 20px; cursor: pointer; box-shadow: 0 5px 0px var(--deep-brown); margin: 5px;
+        }
+
+        .rank-list { width: 450px; background: white; padding: 25px; border-radius: 20px; border: 3px dashed var(--main-brown); margin: 20px 0; font-size: 28px; line-height: 1.5; }
+
+        /* 게임 보드 */
+        #game-board { display: none; position: relative; width: 800px; height: 600px; background-color: var(--sky-blue); border-radius: 40px; border: 8px solid var(--main-brown); overflow: hidden; }
+        #world-container { position: absolute; top: 0; left: 0; width: 100000px; height: 100%; transition: left 0.5s cubic-bezier(0.25, 0.1, 0.25, 1); }
+        #ground { position: absolute; bottom: 0; width: 100%; height: 150px; background-color: var(--grass-green); border-top: 5px solid #8bc34a; background-image: radial-gradient(#9ccc65 15%, transparent 16%); background-size: 60px 60px; }
+        #ui-header { position: absolute; top: 0; width: 100%; height: 70px; background-color: rgba(141, 110, 99, 0.95); display: flex; justify-content: space-around; align-items: center; color: white; font-size: 26px; z-index: 100; }
+        #puppy { position: absolute; bottom: 120px; left: 100px; font-size: 80px; z-index: 200; transform: scaleX(-1); }
+        .word-target { position: absolute; background: white; padding: 12px 25px; border-radius: 25px; border: 4px solid var(--main-brown); font-size: 26px; font-weight: bold; transform: translateX(-50%); transition: 0.3s; }
+        #answer-field { width: 400px; height: 55px; border-radius: 30px; border: 5px solid var(--main-brown); font-size: 30px; text-align: center; font-family: 'Gaegu'; outline: none; }
+        @keyframes jump { 0%, 100% { bottom: 120px; } 50% { bottom: 180px; } }
+        .jump-anim { animation: jump 0.4s ease; }
+    </style>
+</head>
+<body>
+
+    <div id="screen-start">
+        <div style="font-size: 80px;">🐕</div>
+        <h1 style="margin-bottom: 20px;">역사 강아지 산책</h1>
+        <input type="text" id="nickname-field" class="nickname-input" placeholder="강아지 이름을 정해줘!" maxlength="8">
+        <div style="display:flex;">
+            <button id="btn-game-start">산책 시작!</button>
+            <button id="btn-show-rank" style="background-color: #d4a373;">실시간 랭킹</button>
+        </div>
+    </div>
+
+    <div id="screen-rank">
+        <h1>🏆 실시간 산책 랭킹</h1>
+        <div class="rank-list" id="rank-list-content">데이터를 불러오는 중...</div>
+        <button onclick="document.getElementById('screen-rank').style.display='none'">뒤로 가기</button>
+    </div>
+
+    <main id="game-board">
+        <header id="ui-header">
+            <div id="player-name-ui" style="color: #ffeb3b;">🐾 대기 중</div>
+            <div id="time-text">⏱️ 90s</div>
+            <div id="dist-text">🏃 0m</div>
+        </header>
+        <div id="puppy">🐕</div>
+        <div id="world-container">
+            <div id="ground"></div>
+            <div id="word-layer"></div>
+        </div>
+        <section style="position:absolute; bottom:30px; width:100%; display:flex; justify-content:center; z-index:300;">
+            <input type="text" id="answer-field" placeholder="정답을 입력하세요!" autocomplete="off">
+        </section>
+    </main>
+
+    <script>
+        const wordList = ["주먹도끼", "뗀석기", "빗살무늬토기", "움집", "고인돌", "단군왕검", "광개토대왕", "장수왕", "살수대첩", "화랑도", "불국사", "석굴암", "해동성국", "장보고", "태조왕건", "과거제", "귀주대첩", "팔만대장경", "금속활자", "공민왕", "훈민정음", "이순신", "거북선", "수원화성", "정조", "대동여지도"];
+
+        let playerNickname = "";
+        let distance = 0, timeLeft = 90, currentStep = 0, activeWords = [];
+
+        // 시작 버튼 클릭 시
+        document.getElementById('btn-game-start').onclick = () => {
+            const inputName = document.getElementById('nickname-field').value.trim();
+            if(!inputName) {
+                alert("강아지 이름을 입력해야 산책을 갈 수 있어! 🐾");
+                return;
+            }
+            playerNickname = inputName;
+            document.getElementById('player-name-ui').innerText = `🐾 ${playerNickname}`;
+            document.getElementById('screen-start').style.display = 'none';
+            document.getElementById('game-board').style.display = 'block';
+            initWorld();
+            startGame();
+        };
+
+        document.getElementById('btn-show-rank').onclick = () => { window.loadRankings(); document.getElementById('screen-rank').style.display = 'flex'; };
+
+        function initWorld() {
+            const layer = document.getElementById('word-layer');
+            layer.innerHTML = ''; activeWords = [];
+            for (let i = 0; i < 150; i++) {
+                const div = document.createElement('div');
+                div.className = 'word-target'; div.innerText = wordList[i % wordList.length];
+                div.style.left = (500 + i * 350) + "px"; div.style.bottom = "220px";
+                layer.appendChild(div); activeWords.push({ element: div, text: wordList[i % wordList.length] });
+            }
+        }
+
+        function startGame() {
+            document.getElementById('answer-field').focus();
+            const timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('time-text').innerText = `⏱️ ${timeLeft}s`;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    window.saveRankToFirebase(playerNickname, distance);
+                }
+            }, 1000);
+        }
+
+        document.getElementById('answer-field').onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                const val = e.target.value.trim();
+                if (activeWords[currentStep] && activeWords[currentStep].text === val) {
+                    distance += 10;
+                    document.getElementById('dist-text').innerText = `🏃 ${distance}m`;
+                    activeWords[currentStep].element.style.opacity = '0';
+                    const p = document.getElementById('puppy');
+                    p.classList.remove('jump-anim'); void p.offsetWidth; p.classList.add('jump-anim');
+                    currentStep++;
+                    document.getElementById('world-container').style.left = -(currentStep * 350) + "px";
+                }
+                e.target.value = "";
+            }
+        };
+    </script>
+</body>
+</html>
