@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>역사 강아지 산책: 실시간 랭킹</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap" rel="stylesheet">
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push, set, onValue, query, orderByChild, limitToLast } 
+        from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "history-project.firebaseapp.com",
+            databaseURL: "https://history-project-default-rtdb.firebaseio.com",
+            projectId: "history-project",
+            storageBucket: "history-project.appspot.com",
+            messagingSenderId: "000000000000",
+            appId: "1:000000000000:web:xxxxxxxx"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        window.saveRankToFirebase = function(name, score) {
+            const rankRef = ref(db, 'rankings');
+            const newRankRef = push(rankRef);
+
+            set(newRankRef, {
+                name: name,
+                score: score,
+                timestamp: Date.now()
+            }).then(() => {
+                alert(`${name}님 기록 저장 완료!`);
+                location.reload();
+            });
+        };
+
+        window.loadRankings = function() {
+            const rankRef = ref(db, 'rankings');
+            const topRankQuery = query(rankRef, orderByChild('score'), limitToLast(5));
+
+            onValue(topRankQuery, (snapshot) => {
+                const data = snapshot.val();
+                const container = document.getElementById('rank-list-content');
+
+                if (!data) {
+                    container.innerHTML = "기록 없음";
+                    return;
+                }
+
+                const sortedRanks = Object.values(data)
+                    .sort((a, b) => b.score - a.score);
+
+                container.innerHTML = sortedRanks.map((r, i) =>
+                    `<div>${i + 1}위 ${r.name} : ${r.score}m</div>`
+                ).join('');
+            });
+        };
+    </script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Gaegu', cursive;
+            background: #d7ccc8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #game-board {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: #e3f2fd;
+            overflow: hidden;
+            border-radius: 30px;
+        }
+
+        #puppy {
+            position: absolute;
+            bottom: 120px;
+            left: 100px;
+            font-size: 80px;
+        }
+
+        .word-target {
+            position: absolute;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 3px solid brown;
+        }
+
+        #answer-field {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            height: 50px;
+            font-size: 24px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="game-board">
+    <div id="puppy">🐕</div>
+
+    <div id="word-layer"></div>
+
+    <input type="text" id="answer-field" placeholder="정답 입력">
+</div>
+
+<script>
+    const wordList = [
+        "주먹도끼",
+        "뗀석기",
+        "고인돌",
+        "광개토대왕",
+        "훈민정음",
+        "거북선"
+    ];
+
+    let currentStep = 0;
+    let distance = 0;
+
+    const layer = document.getElementById('word-layer');
+
+    wordList.forEach((word, i) => {
+        const div = document.createElement('div');
+
+        div.className = 'word-target';
+        div.innerText = word;
+
+        div.style.left = (500 + i * 300) + 'px';
+        div.style.bottom = '220px';
+
+        layer.appendChild(div);
+    });
+
+    document.getElementById('answer-field').onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            const val = e.target.value.trim();
+
+            if (val === wordList[currentStep]) {
+                distance += 10;
+
+                document.getElementById('puppy').style.left =
+                    (100 + currentStep * 50) + 'px';
+
+                currentStep++;
+            }
+
+            e.target.value = "";
+        }
+    };
+</script>
+
+</body>
+</html>
